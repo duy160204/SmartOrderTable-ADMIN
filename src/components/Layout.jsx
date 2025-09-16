@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { Link, useLocation, Outlet } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import {
   LayoutDashboard,
   Menu,
@@ -11,10 +11,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Settings
 } from 'lucide-react'
 
-const Layout = ({ children }) => {
+const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const { user, logout } = useAuth()
   const location = useLocation()
@@ -28,9 +27,7 @@ const Layout = ({ children }) => {
     { name: 'Promotions', href: '/promotions', icon: Tag },
   ]
 
-  const isActive = (href) => {
-    return location.pathname === href
-  }
+  const isActive = (href) => location.pathname === href
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -110,7 +107,7 @@ const Layout = ({ children }) => {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          {children}
+          <Outlet /> {/* Route con sẽ render ở đây */}
         </main>
       </div>
     </div>
