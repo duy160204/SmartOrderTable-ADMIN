@@ -23,5 +23,10 @@ export const menuService = {
 
   async remove(id) {
     await api.delete(`/admin/menu-items/${id}`)
+  },
+
+  async toggleStatus(id, isActive) {
+    const res = await api.patch(`/admin/menu-items/${id}/status`, null, { params: { isActive } })
+    return res.data
   }
 }

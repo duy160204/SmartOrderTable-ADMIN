@@ -5,68 +5,73 @@ import authService from '../services/authService'
 const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(() => {
-    const t = localStorage.getItem('token')
-    console.log('[AuthContext] init token from localStorage:', t)
-    return t || null
-  })
+  const [token, setToken] = useState(null) // accessToken chỉ trong memory
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Khi app mount → xin accessToken từ refreshToken (cookie)
   useEffect(() => {
-    console.log('[AuthContext] token changed =>', token)
-    if (token) {
-      const decoded = authService.decodeToken(token)
-      if (decoded && decoded.sub) {
-        console.log('[AuthContext] Setting user from decoded:', decoded)
-        setUser({ username: decoded.sub, role: decoded.role || null })
-      } else {
-        console.warn('[AuthContext] Decoded token is missing "sub" or "role":', decoded)
-        // Không clear token ngay để tránh nháy login-dashboard
-        // Có thể giữ token nhưng user null, ProtectedRoute sẽ chờ user
+    const initAuth = async () => {
+      try {
+        const newToken = await authService.refreshToken()
+        if (newToken) {
+          setToken(newToken)
+          const decoded = authService.decodeToken(newToken)
+          setUser({ username: decoded.sub, role: decoded.role || null })
+          console.log('[AuthContext] ✅ Session restored:', decoded)
+        }
+      } catch (err) {
+        console.warn('[AuthContext] ⚠️ Refresh token failed:', err.message)
+        setToken(null)
+        setUser(null)
+      } finally {
+        setLoading(false)
       }
-    } else {
-      setUser(null)
     }
-    setLoading(false)
-  }, [token])
+    initAuth()
+  }, [])
 
   const login = async (username, password) => {
+    setLoading(true)
     try {
       const newToken = await authService.login(username, password)
-      console.log('[AuthContext.login] Received newToken:', newToken)
       setToken(newToken)
       const decoded = authService.decodeToken(newToken)
-      if (decoded && decoded.sub) {
-        setUser({ username: decoded.sub, role: decoded.role || null })
-      }
+      setUser({ username: decoded.sub, role: decoded.role || null })
+      console.log('[AuthContext] ✅ Login success:', decoded)
       return { success: true }
     } catch (err) {
-      console.error('[AuthContext.login] error:', err)
+      console.error('[AuthContext] ❌ Login failed:', err.message)
       return { success: false, error: err.message }
+    } finally {
+      setLoading(false)
     }
   }
 
-  const logout = () => {
-    console.log('[AuthContext.logout] Clearing token & user')
-    localStorage.removeItem('token')
+  // 👉 logout chỉ reset state, không navigate
+  const logout = async () => {
+    try {
+      await authService.logout()
+    } catch (err) {
+      console.warn('[AuthContext] ⚠️ Logout API error:', err.message)
+    }
     setToken(null)
     setUser(null)
+    console.log('[AuthContext] 🚪 Logged out')
   }
 
-  return (
-    <AuthContext.Provider value={{
-      token,
-      user,
-      loading,
-      login,
-      logout,
-      isAuthenticated: !!token,
-      isAdmin: user?.role?.toUpperCase() === 'ADMIN'
-    }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  const value = {
+    token,
+    user,
+    loading,
+    login,
+    logout,
+    isAuthenticated: !!token,
+    isAdmin: (user?.role || '').toUpperCase() === 'ADMIN',
+    setToken, // để interceptor update token
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => useContext(AuthContext)

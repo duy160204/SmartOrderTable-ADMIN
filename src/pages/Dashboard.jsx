@@ -1,14 +1,5 @@
 import { useState, useEffect } from 'react'
-import {
-  Users,
-  Table,
-  Menu,
-  DollarSign,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  AlertCircle
-} from 'lucide-react'
+import { Users, Table, Menu, DollarSign } from 'lucide-react'
 import { reportService } from '../services/reportService'
 import api from '../services/api'
 import toast from 'react-hot-toast'
@@ -17,14 +8,19 @@ import { connectSocket, subscribe } from '../services/socket'
 const Dashboard = () => {
   const [stats, setStats] = useState(null)
   const [recentOrders, setRecentOrders] = useState([])
+  const [loadingOrders, setLoadingOrders] = useState(false)
 
   useEffect(() => {
     loadStats()
     loadRecentOrders()
     connectSocket()
+
     const unsub = subscribe((msg) => {
       if (!msg) return
-      if (typeof msg === 'object' && (msg.type?.includes('ORDER') || msg.event?.includes('ORDER'))) {
+      if (
+        typeof msg === 'object' &&
+        (msg.type?.includes('ORDER') || msg.event?.includes('ORDER'))
+      ) {
         loadRecentOrders()
       }
     })
@@ -41,11 +37,14 @@ const Dashboard = () => {
   }
 
   const loadRecentOrders = async () => {
+    setLoadingOrders(true)
     try {
       const res = await api.get('/orders')
-      setRecentOrders(res.data.slice(0, 5))
+      setRecentOrders(res.data?.slice(0, 5) || [])
     } catch {
       toast.error('Failed to load recent orders')
+    } finally {
+      setLoadingOrders(false)
     }
   }
 
@@ -57,14 +56,20 @@ const Dashboard = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'PENDING': return 'text-yellow-600 bg-yellow-100'
-      case 'PROCESSING': return 'text-blue-600 bg-blue-100'
-      case 'COMPLETED': return 'text-green-600 bg-green-100'
-      default: return 'text-gray-600 bg-gray-100'
+      case 'PENDING':
+        return 'text-yellow-600 bg-yellow-100'
+      case 'PROCESSING':
+        return 'text-blue-600 bg-blue-100'
+      case 'COMPLETED':
+        return 'text-green-600 bg-green-100'
+      default:
+        return 'text-gray-600 bg-gray-100'
     }
   }
 
-  if (!stats) return <p>Loading dashboard...</p>
+  if (!stats) {
+    return <p className="text-gray-500">Loading dashboard...</p>
+  }
 
   const statCards = [
     { title: 'Total Users', value: stats.totalUsers, icon: Users, color: 'bg-blue-500' },
@@ -75,6 +80,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, i) => {
           const Icon = stat.icon
@@ -94,7 +100,9 @@ const Dashboard = () => {
         })}
       </div>
 
+      {/* Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Order status */}
         <div className="card p-6">
           <h3 className="text-lg font-semibold mb-4">Order Status</h3>
           <div className="space-y-4">
@@ -109,23 +117,36 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Recent orders */}
         <div className="card p-6">
           <h3 className="text-lg font-semibold mb-4">Recent Orders</h3>
           <div className="space-y-3">
-            {recentOrders.map((order) => (
-              <div key={order.id} className="flex justify-between border-b py-2">
-                <div>
-                  <p className="font-medium">{order.table?.name || 'N/A'}</p>
-                  <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString()}</p>
+            {loadingOrders ? (
+              <p className="text-gray-500">Loading orders...</p>
+            ) : recentOrders.length > 0 ? (
+              recentOrders.map((order) => (
+                <div key={order.id} className="flex justify-between border-b py-2">
+                  <div>
+                    <p className="font-medium">{order.table?.name || 'N/A'}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(order.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">{formatCurrency(order.totalAmount)}</p>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                        order.status
+                      )}`}
+                    >
+                      {order.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">{formatCurrency(order.totalAmount)}</p>
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                    {order.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500">No recent orders</p>
+            )}
           </div>
         </div>
       </div>

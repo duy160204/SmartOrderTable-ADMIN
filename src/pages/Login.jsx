@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Shield, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -10,49 +10,45 @@ const Login = () => {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const from = location.state?.from?.pathname || '/dashboard'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log('[Login] submitting formData:', formData)
+
+    if (!formData.username || !formData.password) {
+      toast.error('Please enter both username and password')
+      return
+    }
+
     setLoading(true)
+
     try {
-      const result = await login(formData.username, formData.password)
-      console.log('[Login] login result:', result)
-      const tokenLS = localStorage.getItem('token')
-      console.log('[Login] token from localStorage after login:', tokenLS)
-      if (result.success && tokenLS) {
-        toast.success('Login successful!')
-        navigate('/dashboard')
+      const result = await login(formData.username.trim(), formData.password.trim())
+      console.log('[Login.jsx] ✅ Login result:', result)
+
+      if (result.success) {
+        toast.success('Welcome back!')
+        setTimeout(() => {
+          navigate(from, { replace: true })
+        }, 100)
       } else {
-        toast.error(result.error || 'Login failed')
+        toast.error(result.error || 'Login failed - please check your credentials')
       }
     } catch (err) {
-      console.error('[Login] error during login:', err)
-      toast.error('An error occurred')
+      console.error('[Login.jsx] ❌ Unexpected error:', err)
+      toast.error('An unexpected error occurred - please try again')
     } finally {
       setLoading(false)
     }
   }
 
   const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // Trong Login.jsx (nếu có)
-const handleLogin = async (e) => {
-  e.preventDefault()
-  
-  const result = await login(username, password)
-  
-  console.log('[Login] login result:', result) // Debug thêm
-  
-  if (result.success) {
-    navigate('/dashboard')
-  } else {
-    // Handle error
-    console.error('Login failed:', result.error)
-  }
-}
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-admin-50 to-admin-100">
       <div className="max-w-md w-full space-y-8 p-8 bg-white shadow-lg rounded-md">
@@ -77,6 +73,8 @@ const handleLogin = async (e) => {
                 placeholder="Enter your username"
                 value={formData.username}
                 onChange={handleChange}
+                disabled={loading}
+                autoComplete="username"
               />
             </div>
 
@@ -92,13 +90,20 @@ const handleLogin = async (e) => {
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
+                  disabled={loading}
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
+                  tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+                  {showPassword ? 
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" /> : 
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  }
                 </button>
               </div>
             </div>
@@ -107,8 +112,8 @@ const handleLogin = async (e) => {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || !formData.username || !formData.password}
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>

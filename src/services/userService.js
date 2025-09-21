@@ -12,12 +12,20 @@ export const userService = {
   },
 
   async create(data) {
-    const res = await api.post('/admin/users', data)
+    const payload = {
+      ...data,
+      role: { name: data.role }   // 👈 chuyển role string thành object
+    }
+    const res = await api.post('/admin/users', payload)
     return res.data
   },
 
   async update(id, data) {
-    const res = await api.put(`/admin/users/${id}`, data)
+    const payload = {
+      ...data,
+      role: { name: data.role }   // 👈 chuyển role string thành object
+    }
+    const res = await api.put(`/admin/users/${id}`, payload)
     return res.data
   },
 

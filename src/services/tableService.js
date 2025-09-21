@@ -19,5 +19,15 @@ export const tableService = {
 
   async remove(id) {
     await api.delete(`/admin/tables/${id}`)
+  },
+
+  async regenerateQRCode(id) {
+    const res = await api.post(`/admin/tables/${id}/qr-code`)
+    return res.data
+  },
+
+  async getQRCodeBase64(id) {
+    const res = await api.get(`/admin/tables/${id}/qr-code`)
+    return res.data
   }
 }
