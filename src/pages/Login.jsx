@@ -1,3 +1,4 @@
+// src/pages/Login.jsx
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -23,18 +24,17 @@ const Login = () => {
     }
 
     setLoading(true)
-
     try {
-      const result = await login(formData.username.trim(), formData.password.trim())
-      console.log('[Login.jsx] ✅ Login result:', result)
+      const token = await login(formData.username.trim(), formData.password.trim())
+      console.log('[Login.jsx] ✅ Token after login:', token)
 
-      if (result.success) {
+      if (token) {
         toast.success('Welcome back!')
         setTimeout(() => {
           navigate(from, { replace: true })
         }, 100)
       } else {
-        toast.error(result.error || 'Login failed - please check your credentials')
+        toast.error('Login failed - please check your credentials')
       }
     } catch (err) {
       console.error('[Login.jsx] ❌ Unexpected error:', err)

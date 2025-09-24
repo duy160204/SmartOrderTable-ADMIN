@@ -1,9 +1,12 @@
+// src/App.jsx
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { setupInterceptors } from './services/api'
 import ProtectedRoute from './components/ProtectedRoute'
+
+// Pages
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import MenuManagement from './pages/MenuManagement'
@@ -11,24 +14,36 @@ import TableManagement from './pages/TableManagement'
 import UserManagement from './pages/UserManagement'
 import ReportManagement from './pages/ReportManagement'
 import PromotionManagement from './pages/PromotionManagement'
+
+// Layout
 import Layout from './components/Layout'
 
 function AppRoutes() {
   const auth = useAuth()
 
+  // Gắn axios interceptor một lần khi auth context sẵn sàng
   React.useEffect(() => {
     setupInterceptors(auth)
   }, [auth])
 
   return (
     <Routes>
-      {/* Public */}
+      {/* Public routes */}
       <Route path="/login" element={<Login />} />
 
-      {/* Redirect root → login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* Root → nếu login thì vào dashboard, chưa login thì vào login */}
+      <Route
+        path="/"
+        element={
+          auth.isAuthenticated ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
 
-      {/* Protected */}
+      {/* Protected routes (ADMIN only) */}
       <Route
         element={
           <ProtectedRoute requiredRole="ADMIN">
@@ -45,8 +60,8 @@ function AppRoutes() {
         <Route path="promotions" element={<PromotionManagement />} />
       </Route>
 
-      {/* Fallback cho mọi route không tồn tại */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

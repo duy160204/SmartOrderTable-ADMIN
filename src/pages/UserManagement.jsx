@@ -3,17 +3,131 @@ import { Plus, Edit, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { userService } from '../services/userService'
 
+// Default form structure
+const defaultForm = { 
+  username: '', 
+  password: '', 
+  email: '', 
+  phoneNumber: '', 
+  role: 'STAFF' 
+}
+
+// Modal component
+const UserModal = ({ show, onClose, onSave, editing, formData, setFormData }) => {
+  if (!show) return null
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30">
+      <div className="bg-white p-6 rounded-lg w-96">
+        <h3 className="text-lg font-semibold mb-4">
+          {editing ? 'Edit User' : 'Add User'}
+        </h3>
+        <form
+          onSubmit={onSave}
+          className="space-y-4"
+        >
+          {/* Username */}
+          <div>
+            <label className="block text-sm">Username</label>
+            <input
+              type="text"
+              value={formData.username}
+              onChange={(e) =>
+                setFormData({ ...formData, username: e.target.value })
+              }
+              className="input w-full"
+              required
+            />
+          </div>
+
+          {/* Password only for create */}
+          {!editing && (
+            <div>
+              <label className="block text-sm">Password</label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                className="input w-full"
+                required
+              />
+            </div>
+          )}
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm">Email</label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              className="input w-full"
+              required
+            />
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block text-sm">Phone</label>
+            <input
+              type="text"
+              value={formData.phoneNumber}
+              onChange={(e) =>
+                setFormData({ ...formData, phoneNumber: e.target.value })
+              }
+              className="input w-full"
+            />
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="block text-sm">Role</label>
+            <select
+              value={formData.role}
+              onChange={(e) =>
+                setFormData({ ...formData, role: e.target.value })
+              }
+              className="input w-full"
+            >
+              <option value="ADMIN">ADMIN</option>
+              <option value="STAFF">STAFF</option>
+              <option value="KITCHEN">KITCHEN</option>
+            </select>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 const UserManagement = () => {
   const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [formData, setFormData] = useState({ username: '', role: 'STAFF' })
-  const [loading, setLoading] = useState(false)
-
-  // Bộ lọc
+  const [formData, setFormData] = useState(defaultForm)
   const [filterRole, setFilterRole] = useState('ALL')
   const [searchName, setSearchName] = useState('')
 
+  // Fetch users
   useEffect(() => {
     fetchUsers()
   }, [])
@@ -33,14 +147,16 @@ const UserManagement = () => {
 
   const resetForm = () => {
     setEditing(null)
-    setFormData({ username: '', role: 'STAFF' })
+    setFormData(defaultForm)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
       if (editing) {
-        await userService.update(editing.id, formData)
+        // Prepare payload without password
+        const { password, ...payload } = formData
+        await userService.update(editing.id, payload)
         toast.success('User updated')
       } else {
         await userService.create(formData)
@@ -67,11 +183,11 @@ const UserManagement = () => {
     }
   }
 
-  // Lọc người dùng theo role + tên
-  const filteredUsers = users.filter((u) => {
-    const matchRole = filterRole === 'ALL' || u.role?.name === filterRole
-    const matchName = !searchName || u.username.toLowerCase().includes(searchName.toLowerCase())
-    return matchRole && matchName
+  // Filter users
+  const filteredUsers = users.filter(u => {
+    const roleMatch = filterRole === 'ALL' || u.role?.name === filterRole
+    const nameMatch = u.username.toLowerCase().includes(searchName.toLowerCase())
+    return roleMatch && nameMatch
   })
 
   return (
@@ -80,10 +196,7 @@ const UserManagement = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">User Management</h2>
         <button
-          onClick={() => {
-            resetForm()
-            setShowModal(true)
-          }}
+          onClick={() => { resetForm(); setShowModal(true) }}
           className="btn btn-primary flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" /> Add User
@@ -111,7 +224,7 @@ const UserManagement = () => {
         </select>
       </div>
 
-      {/* User List */}
+      {/* User Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <table className="w-full border-collapse">
           <thead className="bg-gray-50">
@@ -130,7 +243,7 @@ const UserManagement = () => {
                 </td>
               </tr>
             ) : filteredUsers.length > 0 ? (
-              filteredUsers.map((u) => (
+              filteredUsers.map(u => (
                 <tr key={u.id} className="border-t hover:bg-gray-50">
                   <td className="px-4 py-3 align-middle">{u.id}</td>
                   <td className="px-4 py-3 align-middle">{u.username}</td>
@@ -141,6 +254,8 @@ const UserManagement = () => {
                         setEditing(u)
                         setFormData({
                           username: u.username,
+                          email: u.email || '',
+                          phoneNumber: u.phoneNumber || '',
                           role: u.role?.name || 'STAFF'
                         })
                         setShowModal(true)
@@ -169,59 +284,15 @@ const UserManagement = () => {
         </table>
       </div>
 
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30">
-          <div className="bg-white p-6 rounded-lg w-96">
-            <h3 className="text-lg font-semibold mb-4">
-              {editing ? 'Edit User' : 'Add User'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm">Username</label>
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) =>
-                    setFormData({ ...formData, username: e.target.value })
-                  }
-                  className="input w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm">Role</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) =>
-                    setFormData({ ...formData, role: e.target.value })
-                  }
-                  className="input w-full"
-                >
-                  <option value="ADMIN">ADMIN</option>
-                  <option value="STAFF">STAFF</option>
-                  <option value="KITCHEN">KITCHEN</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false)
-                    resetForm()
-                  }}
-                  className="btn btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* User Modal */}
+      <UserModal
+        show={showModal}
+        onClose={() => { setShowModal(false); resetForm() }}
+        onSave={handleSubmit}
+        editing={editing}
+        formData={formData}
+        setFormData={setFormData}
+      />
     </div>
   )
 }

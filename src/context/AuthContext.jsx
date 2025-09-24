@@ -5,24 +5,17 @@ import authService from '../services/authService'
 const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(null) // accessToken chỉ trong memory
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Khi app mount → xin accessToken từ refreshToken (cookie)
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const newToken = await authService.refreshToken()
-        if (newToken) {
-          setToken(newToken)
-          const decoded = authService.decodeToken(newToken)
-          setUser({ username: decoded.sub, role: decoded.role || null })
-          console.log('[AuthContext] ✅ Session restored:', decoded)
-        }
+        const me = await authService.me()
+        setUser(me || null)
+        if (me) console.log('[AuthContext] ✅ Session restored:', me)
       } catch (err) {
-        console.warn('[AuthContext] ⚠️ Refresh token failed:', err.message)
-        setToken(null)
+        console.warn('[AuthContext] ⚠️ Init auth failed:', err.response?.data || err.message)
         setUser(null)
       } finally {
         setLoading(false)
@@ -34,44 +27,46 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     setLoading(true)
     try {
-      const newToken = await authService.login(username, password)
-      setToken(newToken)
-      const decoded = authService.decodeToken(newToken)
-      setUser({ username: decoded.sub, role: decoded.role || null })
-      console.log('[AuthContext] ✅ Login success:', decoded)
-      return { success: true }
+      const ok = await authService.login(username, password)
+      if (ok) {
+        const me = await authService.me()
+        setUser(me)
+        console.log('[AuthContext] ✅ Login success:', me)
+        return { success: true }
+      }
+      return { success: false, error: 'Invalid credentials' }
     } catch (err) {
-      console.error('[AuthContext] ❌ Login failed:', err.message)
+      console.error('[AuthContext] ❌ Login failed:', err.response?.data || err.message)
       return { success: false, error: err.message }
     } finally {
       setLoading(false)
     }
   }
 
-  // 👉 logout chỉ reset state, không navigate
   const logout = async () => {
     try {
       await authService.logout()
     } catch (err) {
-      console.warn('[AuthContext] ⚠️ Logout API error:', err.message)
+      console.warn('[AuthContext] ⚠️ Logout API error:', err.response?.data || err.message)
     }
-    setToken(null)
     setUser(null)
     console.log('[AuthContext] 🚪 Logged out')
   }
 
-  const value = {
-    token,
-    user,
-    loading,
-    login,
-    logout,
-    isAuthenticated: !!token,
-    isAdmin: (user?.role || '').toUpperCase() === 'ADMIN',
-    setToken, // để interceptor update token
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        isAuthenticated: !!user,
+        isAdmin: (user?.role || '').toUpperCase() === 'ADMIN',
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => useContext(AuthContext)
