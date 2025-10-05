@@ -12,7 +12,6 @@ export const tableService = {
   },
 
   async update(id, data) {
-    // Backend exposes PATCH for status and no generic PUT; keep PUT for now if server supports
     const res = await api.put(`/admin/tables/${id}`, data)
     return res.data
   },
@@ -26,8 +25,9 @@ export const tableService = {
     return res.data
   },
 
+  // Cập nhật endpoint QR code Base64
   async getQRCodeBase64(id) {
-    const res = await api.get(`/admin/tables/${id}/qr-code`)
+    const res = await api.get(`/admin/tables/${id}/qr-code/base64`)
     return res.data
   }
 }

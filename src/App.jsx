@@ -14,6 +14,7 @@ import TableManagement from './pages/TableManagement'
 import UserManagement from './pages/UserManagement'
 import ReportManagement from './pages/ReportManagement'
 import PromotionManagement from './pages/PromotionManagement'
+import ShiftManagement from './pages/ShiftManagement' // 🟧 thêm mới
 
 // Layout
 import Layout from './components/Layout'
@@ -21,7 +22,7 @@ import Layout from './components/Layout'
 function AppRoutes() {
   const auth = useAuth()
 
-  // Gắn axios interceptor một lần khi auth context sẵn sàng
+  // Gắn axios interceptor một lần khi Auth context sẵn sàng
   React.useEffect(() => {
     setupInterceptors(auth)
   }, [auth])
@@ -31,7 +32,7 @@ function AppRoutes() {
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
 
-      {/* Root → nếu login thì vào dashboard, chưa login thì vào login */}
+      {/* Root → nếu login thì vào dashboard, chưa login thì về login */}
       <Route
         path="/"
         element={
@@ -56,6 +57,7 @@ function AppRoutes() {
         <Route path="menu" element={<MenuManagement />} />
         <Route path="tables" element={<TableManagement />} />
         <Route path="users" element={<UserManagement />} />
+        <Route path="shifts" element={<ShiftManagement />} /> {/* 🟧 thêm route này */}
         <Route path="reports" element={<ReportManagement />} />
         <Route path="promotions" element={<PromotionManagement />} />
       </Route>
